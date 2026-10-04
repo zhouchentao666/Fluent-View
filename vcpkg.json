@@ -1,0 +1,9 @@
+{
+  "name": "fluent-view",
+  "version": "1.0.0",
+  "description": "Fluent Design image viewer for Windows / Linux / macOS",
+  "dependencies": [
+    { "name": "libraw" },
+    { "name": "libheif" }
+  ]
+}

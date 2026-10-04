@@ -1,0 +1,78 @@
+name: Build macOS
+
+on:
+  workflow_call:
+  push:
+    branches: [main, master]
+    paths-ignore: ["**.md", "packaging/windows/**", "packaging/linux/**"]
+  pull_request:
+    branches: [main, master]
+    paths-ignore: ["**.md", "packaging/windows/**", "packaging/linux/**"]
+
+env:
+  QT_VERSION: "6.8.*"
+
+jobs:
+  universal:
+    name: macOS Universal (dmg)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt (universal)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: mac
+          target: desktop
+          arch: clang_64   # Qt 6 universal binaries (x86_64 + arm64)
+          tools: tools_ninja
+          cache: true
+
+      - name: Install build deps
+        run: |
+          brew install ninja create-dmg libraw libheif imagemagick
+          bash scripts/make-icns.sh
+
+      - name: Configure (universal)
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
+            -DFV_WITH_LIBRAW=ON \
+            -DFV_WITH_LIBHEIF=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Deploy Qt into bundle
+        run: |
+          APP="build/Fluent-View.app"
+          # macdeployqt copies frameworks and plugins into the bundle
+          macdeployqt "$APP" -verbose=1
+          codesign --force --deep --sign - "$APP"
+
+      - name: Create dmg
+        run: |
+          mkdir -p dist dmg-staging
+          cp -R "build/Fluent-View.app" dmg-staging/
+          ln -s /Applications dmg-staging/Applications
+          create-dmg \
+            --volname "Fluent-View" \
+            --window-size 660 400 \
+            --icon-size 120 \
+            --icon "Fluent-View.app" 160 200 \
+            --app-drop-link 500 200 \
+            "dist/Fluent-View-macos-universal.dmg" \
+            "dmg-staging" || true
+          # fallback if create-dmg failed (plain hdiutil dmg)
+          if [ ! -f "dist/Fluent-View-macos-universal.dmg" ]; then
+            hdiutil create -volname Fluent-View -srcfolder dmg-staging \
+              -format UDZO "dist/Fluent-View-macos-universal.dmg"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Fluent-View-macos-universal
+          path: dist/Fluent-View-macos-universal.dmg

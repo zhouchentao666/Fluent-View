@@ -1,0 +1,220 @@
+name: Build Linux
+
+on:
+  workflow_call:
+  push:
+    branches: [main, master]
+    paths-ignore: ["**.md", "packaging/windows/**", "packaging/macos/**"]
+  pull_request:
+    branches: [main, master]
+    paths-ignore: ["**.md", "packaging/windows/**", "packaging/macos/**"]
+
+env:
+  QT_VERSION: "6.8.*"
+
+jobs:
+  x64:
+    name: Linux x86_64 (AppImage / deb)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: linux
+          target: desktop
+          arch: linux_gcc_64
+          tools: tools_ninja
+          cache: true
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build libgl1-mesa-dev libraw-dev libheif-dev \
+            file desktop-file-utils
+
+      - name: Configure
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DFV_WITH_LIBRAW=ON \
+            -DFV_WITH_LIBHEIF=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Install stage
+        run: |
+          cmake --install build --prefix build/AppDir/usr
+          # AppRun wrapper so the AppImage finds its own Qt libs
+          cat > build/AppDir/AppRun <<'EOF'
+          #!/bin/bash
+          SELF="$(readlink -f "$0")"
+          HERE="${SELF%/*}"
+          export LD_LIBRARY_PATH="$HERE/usr/lib:$LD_LIBRARY_PATH"
+          export QT_PLUGIN_PATH="$HERE/usr/plugins"
+          exec "$HERE/usr/bin/fluent-view" "$@"
+          EOF
+          chmod +x build/AppDir/AppRun
+
+      - name: Build AppImage
+        run: |
+          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy*.AppImage
+          export OUTPUT="Fluent-View-linux-x86_64.AppImage"
+          export APPIMAGE_EXTRACT_AND_RUN=1   # no FUSE on runners
+          ./linuxdeploy-x86_64.AppImage \
+            --appdir build/AppDir \
+            --executable build/AppDir/usr/bin/fluent-view \
+            --desktop-file packaging/linux/com.fluentview.FluentView.desktop \
+            --icon-file resources/icons/fluentview.svg \
+            --plugin qt \
+            --output appimage
+          mkdir -p dist && mv Fluent-View-linux-x86_64.AppImage dist/
+
+      - name: Build deb
+        run: |
+          cmake --install build --prefix build/deb-stage/usr
+          bash scripts/make-deb.sh build/deb-stage dist 1.0.0 amd64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Fluent-View-linux-x86_64
+          path: |
+            dist/Fluent-View-linux-x86_64.AppImage
+            dist/*.deb
+
+  arm64:
+    name: Linux ARM64 (AppImage)
+    runs-on: ubuntu-24.04
+    continue-on-error: true   # cross-compiling Qt via Debian multiarch is experimental
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare cross toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+            ninja-build libgl1-mesa-dev:arm64 libraw-dev:arm64 libheif-dev:arm64 \
+            qemu-user-static binfmt-support
+
+      - name: Install host Qt tools
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: linux
+          target: desktop
+          arch: linux_gcc_64
+          tools: tools_ninja
+          cache: true
+
+      - name: Fetch Qt6 for ARM64 (Debian multiarch)
+        run: |
+          sudo dpkg --add-architecture arm64
+          sudo sed -i 's|^deb |deb [arch=amd64] |' /etc/apt/sources.list.d/*.sources /etc/apt/sources.list 2>/dev/null || true
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ noble main universe" | sudo tee /etc/apt/sources.list.d/arm64.list
+          sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 99D2740C 2>/dev/null || true
+          sudo apt-get update || true
+          sudo apt-get install -y --no-install-recommends \
+            libqt6core6:arm64 libqt6gui6:arm64 libqt6widgets6:arm64 \
+            libqt6svg6:arm64 libqt6concurrent6:arm64 \
+            qt6-base-dev:arm64 qt6-svg-dev:arm64 \
+            libgl1:arm64 libgles2:arm64 libegl1:arm64
+
+      - name: Configure (cross)
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_SYSTEM_NAME=Linux \
+            -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
+            -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+            -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
+            -DCMAKE_FIND_ROOT_PATH="/usr/lib/aarch64-linux-gnu/cmake/Qt6;${Qt6_DIR}" \
+            -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
+            -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH \
+            -DFV_WITH_LIBRAW=ON \
+            -DFV_WITH_LIBHEIF=ON
+
+      - name: Build (cross)
+        run: cmake --build build --parallel
+
+      - name: Stage AppDir
+        run: |
+          cmake --install build --prefix build/AppDir/usr
+          cat > build/AppDir/AppRun <<'EOF'
+          #!/bin/bash
+          SELF="$(readlink -f "$0")"
+          HERE="${SELF%/*}"
+          export LD_LIBRARY_PATH="$HERE/usr/lib/aarch64-linux-gnu:$HERE/usr/lib:$LD_LIBRARY_PATH"
+          export QT_PLUGIN_PATH="$HERE/usr/plugins"
+          exec "$HERE/usr/bin/fluent-view" "$@"
+          EOF
+          chmod +x build/AppDir/AppRun
+
+      - name: Deploy ARM64 Qt runtime (manual copy)
+        run: |
+          QT_PLUGINS_ARM=/usr/lib/aarch64-linux-gnu/qt6/plugins
+          QT_LIB_ARM=/usr/lib/aarch64-linux-gnu
+          mkdir -p build/AppDir/usr/{lib,plugins/platforms,plugins/imageformats,plugins/styles,plugins/iconengines}
+          for lib in libQt6Core.so.6 libQt6Gui.so.6 libQt6Widgets.so.6 \
+                     libQt6Svg.so.6 libQt6Concurrent.so.6 libQt6XcbQpa.so.6; do
+            cp -a "$QT_LIB_ARM/$lib"* build/AppDir/usr/lib/ 2>/dev/null || true
+          done
+          cp -a "$QT_LIB_ARM"/libicuuc.so* "$QT_LIB_ARM"/libicui18n.so* \
+             "$QT_LIB_ARM"/libicudata.so* build/AppDir/usr/lib/ 2>/dev/null || true
+          cp -a "$QT_PLUGINS_ARM/platforms"/*.so build/AppDir/usr/plugins/platforms/ 2>/dev/null || true
+          cp -a "$QT_PLUGINS_ARM/imageformats"/*.so build/AppDir/usr/plugins/imageformats/ 2>/dev/null || true
+          cp -a "$QT_PLUGINS_ARM/styles"/*.so build/AppDir/usr/plugins/styles/ 2>/dev/null || true
+          cp -a "$QT_PLUGINS_ARM/iconengines"/*.so build/AppDir/usr/plugins/iconengines/ 2>/dev/null || true
+
+      - name: Build AppImage (ARM64)
+        run: |
+          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy-x86_64.AppImage
+          export OUTPUT="Fluent-View-linux-arm64.AppImage"
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          ./linuxdeploy-x86_64.AppImage \
+            --appdir build/AppDir \
+            --executable build/AppDir/usr/bin/fluent-view \
+            --desktop-file packaging/linux/com.fluentview.FluentView.desktop \
+            --icon-file resources/icons/fluentview.svg \
+            --exclude-library libQt6Core.so.6 \
+            --output appimage
+          mkdir -p dist && mv Fluent-View-linux-arm64.AppImage dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Fluent-View-linux-arm64
+          path: dist/Fluent-View-linux-arm64.AppImage
+
+  flatpak:
+    name: Linux Flatpak
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install flatpak + builder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+          flatpak remote-add --if-not-exists flathub \
+            https://flathub.org/repo/flathub.repo --user || true
+
+      - name: Build Flatpak bundle
+        run: |
+          flatpak-builder --user --install-deps-from=flathub --force-clean \
+            --repo=flatpak-repo build/flatpak \
+            packaging/linux/flatpak/com.fluentview.FluentView.yml
+          flatpak build-bundle flatpak-repo \
+            Fluent-View-1.0.0-x86_64.flatpak com.fluentview.FluentView
+          mkdir -p dist && mv Fluent-View-1.0.0-x86_64.flatpak dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Fluent-View-linux-flatpak
+          path: dist/Fluent-View-1.0.0-x86_64.flatpak
