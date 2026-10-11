@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>app.fluentview.FluentView</id>
+  <name>Fluent View</name>
+  <summary>A cross-platform Fluent Design image viewer</summary>
+  <description>
+    <p>Fluent View is a fast, lightweight image viewer built with Qt Quick and the
+    Fluent WinUI3 style. It supports common formats (JPEG/PNG/WebP/AVIF/BMP/GIF/HEIC),
+    smooth zoom and pan, thumbnails, light/dark themes, and keyboard navigation.</p>
+  </description>
+  <launchable type="desktop-id">fluent-view.desktop</launchable>
+  <url type="homepage">https://github.com/your-org/fluent-view</url>
+  <releases>
+    <release version="0.1.0" date="2026-10-11"/>
+  </releases>
+</component>

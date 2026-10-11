@@ -1,41 +1,16 @@
-<RCC>
-    <qresource prefix="/icons">
-        <file alias="fluentview.svg">icons/fluentview.svg</file>
-        <file>icons/dark/zoom-in.svg</file>
-        <file>icons/dark/zoom-out.svg</file>
-        <file>icons/dark/fit.svg</file>
-        <file>icons/dark/actual-size.svg</file>
-        <file>icons/dark/rotate-left.svg</file>
-        <file>icons/dark/rotate-right.svg</file>
-        <file>icons/dark/flip-h.svg</file>
-        <file>icons/dark/flip-v.svg</file>
-        <file>icons/dark/slideshow.svg</file>
-        <file>icons/dark/info.svg</file>
-        <file>icons/dark/menu.svg</file>
-        <file>icons/dark/thumbnails.svg</file>
-        <file>icons/dark/minimize.svg</file>
-        <file>icons/dark/maximize.svg</file>
-        <file>icons/dark/close.svg</file>
-        <file>icons/light/zoom-in.svg</file>
-        <file>icons/light/zoom-out.svg</file>
-        <file>icons/light/fit.svg</file>
-        <file>icons/light/actual-size.svg</file>
-        <file>icons/light/rotate-left.svg</file>
-        <file>icons/light/rotate-right.svg</file>
-        <file>icons/light/flip-h.svg</file>
-        <file>icons/light/flip-v.svg</file>
-        <file>icons/light/slideshow.svg</file>
-        <file>icons/light/info.svg</file>
-        <file>icons/light/menu.svg</file>
-        <file>icons/light/thumbnails.svg</file>
-        <file>icons/light/minimize.svg</file>
-        <file>icons/light/maximize.svg</file>
-        <file>icons/light/close.svg</file>
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="/">
+        <file>qml/main.qml</file>
+        <file>qml/components/Icon.qml</file>
+        <file>qml/components/IconButton.qml</file>
+        <file>qml/components/TitleBar.qml</file>
+        <file>qml/components/ToolBar.qml</file>
+        <file>qml/components/ImageView.qml</file>
+        <file>qml/components/ThumbnailSidebar.qml</file>
+        <file>qml/components/InfoBar.qml</file>
+        <file>qml/components/SettingsDialog.qml</file>
+        <file>qml/components/BusyOverlay.qml</file>
+        <file>qml/components/ResizeHandles.qml</file>
     </qresource>
-    <qresource prefix="/styles">
-        <file alias="dark.qss">styles/dark.qss</file>
-        <file alias="light.qss">styles/light.qss</file>
-    </qresource>
-    <!-- .qm translations are embedded automatically by qt_add_translations
-         under the /i18n prefix -->
 </RCC>

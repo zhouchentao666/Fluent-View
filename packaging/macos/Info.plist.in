@@ -2,85 +2,30 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleName</key>
-    <string>Fluent-View</string>
-    <key>CFBundleDisplayName</key>
-    <string>Fluent-View</string>
-    <key>CFBundleExecutable</key>
-    <string>${MACOSX_BUNDLE_EXECUTABLE_NAME}</string>
-    <key>CFBundleIdentifier</key>
-    <string>${MACOSX_BUNDLE_GUI_IDENTIFIER}</string>
-    <key>CFBundleVersion</key>
-    <string>${MACOSX_BUNDLE_BUNDLE_VERSION}</string>
-    <key>CFBundleShortVersionString</key>
-    <string>${MACOSX_BUNDLE_SHORT_VERSION_STRING}</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleIconFile</key>
-    <string>fluentview.icns</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>11.0</string>
-    <key>NSHighResolutionCapable</key>
-    <true/>
-    <key>NSSupportsAutomaticGraphicsSwitching</key>
-    <true/>
-    <key>NSPrincipalClass</key>
-    <string>NSApplication</string>
-    <key>CFBundleDevelopmentRegion</key>
-    <string>English</string>
-    <key>CFBundleLocalizations</key>
-    <array>
-        <string>en</string>
-        <string>zh_CN</string>
-    </array>
+    <key>CFBundleName</key>            <string>Fluent View</string>
+    <key>CFBundleDisplayName</key>     <string>Fluent View</string>
+    <key>CFBundleIdentifier</key>      <string>app.fluentview.FluentView</string>
+    <key>CFBundleVersion</key>         <string>${MACOSX_BUNDLE_BUNDLE_VERSION}</string>
+    <key>CFBundleShortVersionString</key> <string>${MACOSX_BUNDLE_BUNDLE_VERSION}</string>
+    <key>LSMinimumSystemVersion</key>  <string>11.0</string>
+    <key>NSHighResolutionCapable</key> <true/>
+    <key>CFBundlePackageType</key>     <string>APPL</string>
     <key>CFBundleDocumentTypes</key>
     <array>
         <dict>
-            <key>CFBundleTypeName</key>
-            <string>Image</string>
-            <key>CFBundleTypeRole</key>
-            <string>Viewer</string>
-            <key>LSHandlerRank</key>
-            <string>Default</string>
-            <key>CFBundleTypeExtensions</key>
-            <array>
-                <string>jpg</string><string>jpeg</string><string>jpe</string><string>jfif</string>
-                <string>png</string><string>apng</string><string>gif</string>
-                <string>webp</string><string>bmp</string><string>dib</string>
-                <string>tif</string><string>tiff</string>
-                <string>ico</string><string>icns</string>
-                <string>svg</string><string>svgz</string>
-                <string>tga</string><string>pcx</string><string>wbmp</string>
-                <string>hdr</string><string>exr</string>
-                <string>psd</string><string>psb</string>
-                <string>cr2</string><string>cr3</string><string>nef</string><string>arw</string>
-                <string>raf</string><string>orf</string><string>rw2</string><string>dng</string>
-                <string>heic</string><string>heif</string><string>avif</string>
-                <string>x3f</string><string>pef</string><string>srw</string>
-            </array>
-                 <key>LSItemContentTypes</key>
+            <key>CFBundleTypeRole</key> <string>Viewer</string>
+            <key>LSHandlerRank</key>    <string>Alternate</string>
+            <key>LSItemContentTypes</key>
             <array>
                 <string>public.jpeg</string>
+                <string>public.jpeg-2000</string>
                 <string>public.png</string>
-                <string>com.compuserve.gif</string>
-                <string>com.microsoft.bmp</string>
-                <string>public.webp</string>
                 <string>public.tiff</string>
-                <string>com.microsoft.ico</string>
-                <string>public.svg-image</string>
-                <string>public.avif</string>
+                <string>com.compuserve.gif</string>
                 <string>public.heic</string>
-                <string>public.heif</string>
-                <string>com.adobe.photoshop-image</string>
-                <string>com.adobe.illustrator.ai-image</string>
-                <string>com.canon.cr2-raw-image</string>
-                <string>com.canon.cr3-raw-image</string>
-                <string>com.nikon.raw-image</string>
-                <string>com.sony.arw-raw-image</string>
-                <string>com.fuji.raw-image</string>
-                <string>com.olympus.raw-image</string>
-                <string>com.panasonic.raw-image</string>
-                <string>com.adobe.raw-image</string>
+                <string>org.webmproject.webp</string>
+                <string>public.avif</string>
+                <string>com.microsoft.bmp</string>
             </array>
         </dict>
     </array>

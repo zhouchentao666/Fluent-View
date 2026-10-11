@@ -1,73 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Package
-  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
-  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
-  xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
-  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
-
-  <Identity
-    Name="FluentView.FluentView"
-    Publisher="CN=FluentView"
-    Version="1.0.0.0"
-    ProcessorArchitecture="${ARCH}"/>
-
+<!--
+  MSIX packaging manifest. Build with the Windows SDK `makeappx`, then sign with
+  a trusted code-signing certificate:
+    makeappx pack /d build\msix /p fluent-view.msix /o
+    signtool sign /fd SHA256 /a /f cert.pfx fluent-view.msix
+  The signing certificate (and its password) should come from GitHub Secrets.
+-->
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+         xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+         xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+         IgnorableNamespaces="uap uap3">
+  <Identity Name="FluentView.FluentView"
+            Publisher="CN=Fluent View"
+            Version="0.1.0.0" />
   <Properties>
-    <DisplayName>Fluent-View</DisplayName>
-    <PublisherDisplayName>Fluent-View Contributors</PublisherDisplayName>
+    <DisplayName>Fluent View</DisplayName>
+    <PublisherDisplayName>Fluent View contributors</PublisherDisplayName>
     <Logo>assets\StoreLogo.png</Logo>
   </Properties>
-
   <Dependencies>
-    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0"/>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.22621.0" />
   </Dependencies>
-
   <Resources>
-    <Resource Language="en-us"/>
-    <Resource Language="zh-cn"/>
+    <Resource Language="en-US" />
   </Resources>
-
   <Applications>
-    <Application Id="App"
-      Executable="Fluent-View.exe"
-      EntryPoint="Windows.FullTrustApplication"
-      uap10:RuntimeBehavior="win32App"
-      uap10:TrustLevel="fullTrust">
-      <uap:VisualElements
-        DisplayName="Fluent-View"
-        Description="A Fluent Design image viewer"
-        BackgroundColor="transparent"
-        Square150x150Logo="assets\Square150x150Logo.png"
-        Square44x44Logo="assets\Square44x44Logo.png">
-        <uap:DefaultTile Square150x150Logo="assets\Square150x150Logo.png"/>
-      </uap:VisualElements>
-      <Extensions>
-        <uap:Extension Category="windows.fileTypeAssociation">
-          <uap3:FileTypeAssociation xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
-            Name="fluentview-images">
-            <uap:SupportedFileTypes>
-              <uap:FileType>.jpg</uap:FileType>
-              <uap:FileType>.jpeg</uap:FileType>
-              <uap:FileType>.png</uap:FileType>
-              <uap:FileType>.bmp</uap:FileType>
-              <uap:FileType>.gif</uap:FileType>
-              <uap:FileType>.webp</uap:FileType>
-              <uap:FileType>.tif</uap:FileType>
-              <uap:FileType>.tiff</uap:FileType>
-              <uap:FileType>.ico</uap:FileType>
-              <uap:FileType>.svg</uap:FileType>
-              <uap:FileType>.avif</uap:FileType>
-              <uap:FileType>.heic</uap:FileType>
-              <uap:FileType>.heif</uap:FileType>
-              <uap:FileType>.psd</uap:FileType>
-              <uap:FileType>.psb</uap:FileType>
-            </uap:SupportedFileTypes>
-          </uap3:FileTypeAssociation>
-        </uap:Extension>
-      </Extensions>
+    <Application Id="App" Executable="fluent-view.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="Fluent View"
+                          Description="Fluent Design image viewer"
+                          BackgroundColor="#0f7bcd"
+                          Square150x150Logo="assets\Square150x150Logo.png"
+                          Square44x44Logo="assets\Square44x44Logo.png" />
     </Application>
   </Applications>
-
-  <Capabilities>
-    <rescap:Capability Name="runFullTrust"/>
-  </Capabilities>
 </Package>

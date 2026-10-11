@@ -1,110 +1,54 @@
 name: Build Windows
 
 on:
-  workflow_call:
   push:
-    branches: [main, master]
-    paths-ignore: ["**.md", "packaging/linux/**", "packaging/macos/**"]
-  pull_request:
-    branches: [main, master]
-    paths-ignore: ["**.md", "packaging/linux/**", "packaging/macos/**"]
-
-env:
-  QT_VERSION: "6.8.*"
+    branches: [main]
+  workflow_dispatch:
+  release:
+    types: [published]
 
 jobs:
   build:
-    name: Windows ${{ matrix.arch }}
     runs-on: windows-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: x64
-            qt_arch: win64_msvc2022_64
-            msvc_arch: amd64
-            triplet: x64-windows
-            with_codecs: ON
-          - arch: arm64
-            qt_arch: win64_msvc2022_arm64
-            msvc_arch: amd64_arm64
-            triplet: arm64-windows
-            with_codecs: OFF   # vcpkg cross for arm64 is slow; optional codecs off
+    env:
+      QT_VERSION: 6.8.0
+      QT_ARCH: win64_msvc2022_64
     steps:
       - uses: actions/checkout@v4
 
-      - name: Generate .ico from SVG
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path packaging/windows | Out-Null
-          magick resources/icons/fluentview.svg -define icon:auto-resize=256,128,64,48,32,16 packaging/windows/fluentview.ico
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Install Qt (${{ matrix.qt_arch }})
-        uses: jurplel/install-qt-action@v4
+      - name: Set up Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v5
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
         with:
           version: ${{ env.QT_VERSION }}
-          arch: ${{ matrix.qt_arch }}
-          tools: tools_ninja
+          host: windows
+          target: desktop
+          arch: ${{ env.QT_ARCH }}
+          modules: qtimageformats qtshadertools
+          dir: ${{ github.workspace }}/Qt
           cache: true
 
-      - name: Setup MSVC (${{ matrix.msvc_arch }})
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: ${{ matrix.msvc_arch }}
+      - name: Add Qt to PATH
+        shell: bash
+        run: echo "${{ github.workspace }}/Qt/${{ env.QT_VERSION }}/${{ env.QT_ARCH }}/bin" >> "$GITHUB_PATH"
 
-      - name: Install vcpkg codecs (x64 only)
-        if: matrix.with_codecs == 'ON'
-        uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgGitCommitId: "e0fee52e0eb9a0c37b0c12aa76ebf37d08d9d576"
-          run-vcpkg-integration: false
-
-      - name: Configure CMake (${{ matrix.arch }})
-        shell: pwsh
-        run: |
-          $args = @(
-            "-S", ".", "-B", "build",
-            "-G", "Ninja",
-            "-DCMAKE_BUILD_TYPE=Release",
-            "-DFV_WITH_LIBRAW=${{ matrix.with_codecs }}",
-            "-DFV_WITH_LIBHEIF=${{ matrix.with_codecs }}"
-          )
-          if ("${{ matrix.with_codecs }}" -eq "ON") {
-            $args += @("-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake",
-                       "-DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }}")
-          }
-          cmake @args
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="${{ github.workspace }}/Qt/${{ env.QT_VERSION }}/${{ env.QT_ARCH }}"
 
       - name: Build
-        shell: pwsh
-        run: cmake --build build --config Release --parallel
+        run: cmake --build build
 
-      - name: Deploy Qt runtime
-        shell: pwsh
-        run: |
-          $qtRoot = if ($env:QT_ROOT_DIR) { $env:QT_ROOT_DIR }
-                    else { (Resolve-Path "$env:Qt6_DIR\..\..\..").Path }
-          pwsh scripts/deploy-windows.ps1 -QtDir $qtRoot -OutDir "build\deploy"
-          Copy-Item "build\fluent-view.exe" "build\deploy\Fluent-View.exe"
+      - name: Deploy Qt libraries
+        shell: bash
+        run: windeployqt --qmldir qml build/bin/fluent-view.exe
 
-      - name: Portable zip
-        shell: pwsh
-        run: |
-          Compress-Archive -Path "build\deploy\*" -DestinationPath "dist\Fluent-View-win-${{ matrix.arch }}-portable.zip" -Force
-
-      - name: MSIX package
-        shell: pwsh
-        run: |
-          pwsh scripts/make-msix.ps1 -DeployDir "build\deploy" -Arch "${{ matrix.arch }}" -OutFile "dist\Fluent-View-win-${{ matrix.arch }}.msix"
-
-      - name: Upload portable zip
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Fluent-View-win-${{ matrix.arch }}-portable
-          path: dist/Fluent-View-win-${{ matrix.arch }}-portable.zip
-
-      - name: Upload MSIX
-        uses: actions/upload-artifact@v4
-        with:
-          name: Fluent-View-win-${{ matrix.arch }}-msix
-          path: dist/Fluent-View-win-${{ matrix.arch }}.msix
+          name: fluent-view-windows
+          path: build/bin

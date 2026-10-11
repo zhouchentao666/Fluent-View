@@ -2,51 +2,34 @@
 build/
 build-*/
 out/
-dist/
-cmake-build-*/
+*.user
+CMakeLists.txt.user
+.compile_commands.json
 
-# CMake
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
-install_manifest.txt
-compile_commands.json
-.dep/
-
-# Qt
-*.qm.user
-*._autogen/
-*.qm
+# Qt / moc / rcc artifacts
 moc_*.cpp
 qrc_*.cpp
-ui_*.h
-.qtc_clangd/
-.vscode/
-.idea/
-*.user
-*.pro.user*
+*.autosave
 
-# Compilers
-*.o
-*.obj
-*.exe
-*.dll
-*.lib
-*.a
-*.dylib
-*.so
-*.so.*
-
-# Packages / artifacts
+# Packaging output
+dist/
+packages/
 *.AppImage
+*.deb
 *.dmg
 *.msix
-*.deb
-*.flatpak
-.flatpak-builder/
-AppDir/
+*.msi
+android/build/
+ios/build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
 
 # OS
 .DS_Store
 Thumbs.db
-desktop.ini
+
+# Downloaded Qt / SDK caches (CI only)
+.cache/
