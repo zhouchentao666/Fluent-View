@@ -9,12 +9,10 @@ on:
 
 env:
   QT_VERSION: 6.8.0
-  # Modules we need for the Fluent viewer:
-  #   qtquickcontrols2 -> Qt Quick Controls 2 + FluentWinUI3 style
-  #   qtimageformats  -> webp / avif / heic decoding
-  #   qtshadertools   -> QML shader support
-  #   qtsvg           -> SVG support used by some controls
-  QT_MODULES: qtquickcontrols2 qtimageformats qtshadertools qtsvg
+  # Only the add-on modules we actually need. qtquickcontrols2 (and the
+  # FluentWinUI3 style) ship with the base desktop install, so they are
+  # intentionally omitted here.
+  QT_MODULES: qtimageformats qtshadertools
 
 # ---------------------------------------------------------------------------
 # Windows x64
@@ -45,18 +43,25 @@ jobs:
         shell: bash
         run: |
           python -m pip install --upgrade pip aqtinstall
-          python -m aqt install-qt "$QT_HOST" desktop "$QT_VERSION" "$QT_ARCH" \
-            --outputdir "$QT_PREFIX" --modules $QT_MODULES --retry 5
+          for i in 1 2 3 4 5; do
+            if python -m aqt install-qt "${{ env.QT_HOST }}" desktop "${{ env.QT_VERSION }}" "${{ env.QT_ARCH }}" --outputdir "${{ env.QT_PREFIX }}" --modules ${{ env.QT_MODULES }}; then
+              break
+            fi
+            echo "aqt attempt $i failed, retrying in 5s..."; sleep 5
+          done
 
       - name: Configure
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/${{ env.QT_ARCH }}"
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/${{ env.QT_ARCH }}"
 
       - name: Build
-        run: cmake --build build
+        run: |
+          cmake --build build
 
       - name: Deploy Qt libraries
         shell: bash
-        run: "${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/${{ env.QT_ARCH }}/bin/windeployqt.exe" --qmldir qml build/bin/fluent-view.exe
+        run: |
+          "${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/${{ env.QT_ARCH }}/bin/windeployqt.exe" --qmldir qml build/bin/fluent-view.exe
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -65,14 +70,14 @@ jobs:
           path: build/bin
 
 # ---------------------------------------------------------------------------
-# macOS arm64 / x86_64 (universal)
+# macOS universal (clang_64 build is a universal binary)
 # ---------------------------------------------------------------------------
   macos:
     name: macOS universal
     runs-on: macos-latest
     env:
       QT_HOST: mac
-      QT_ARCH: macos
+      QT_ARCH: clang_64
       QT_PREFIX: ${{ github.workspace }}/Qt
     steps:
       - uses: actions/checkout@v4
@@ -88,17 +93,24 @@ jobs:
       - name: Install Qt
         run: |
           python -m pip install --upgrade pip aqtinstall
-          python -m aqt install-qt "$QT_HOST" desktop "$QT_VERSION" "$QT_ARCH" \
-            --outputdir "$QT_PREFIX" --modules $QT_MODULES --retry 5
+          for i in 1 2 3 4 5; do
+            if python -m aqt install-qt "${{ env.QT_HOST }}" desktop "${{ env.QT_VERSION }}" "${{ env.QT_ARCH }}" --outputdir "${{ env.QT_PREFIX }}" --modules ${{ env.QT_MODULES }}; then
+              break
+            fi
+            echo "aqt attempt $i failed, retrying in 5s..."; sleep 5
+          done
 
       - name: Configure
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/${{ env.QT_ARCH }}"
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/${{ env.QT_ARCH }}"
 
       - name: Build
-        run: cmake --build build
+        run: |
+          cmake --build build
 
       - name: Deploy and package (.dmg)
-        run: "${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/${{ env.QT_ARCH }}/bin/macdeployqt" build/bin/fluent-view.app -dmg
+        run: |
+          "${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/${{ env.QT_ARCH }}/bin/macdeployqt" build/bin/fluent-view.app -dmg
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -122,8 +134,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build libgl1-mesa-dev libglu1-mesa-dev \
-            libxkbcommon-dev libglib2.0-dev pkg-config wget
+          sudo apt-get install -y ninja-build libgl1-mesa-dev libglu1-mesa-dev libxkbcommon-dev libglib2.0-dev pkg-config wget
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -133,17 +144,24 @@ jobs:
       - name: Install Qt
         run: |
           python -m pip install --upgrade pip aqtinstall
-          python -m aqt install-qt "$QT_HOST" desktop "$QT_VERSION" "$QT_ARCH" \
-            --outputdir "$QT_PREFIX" --modules $QT_MODULES --retry 5
+          for i in 1 2 3 4 5; do
+            if python -m aqt install-qt "${{ env.QT_HOST }}" desktop "${{ env.QT_VERSION }}" "${{ env.QT_ARCH }}" --outputdir "${{ env.QT_PREFIX }}" --modules ${{ env.QT_MODULES }}; then
+              break
+            fi
+            echo "aqt attempt $i failed, retrying in 5s..."; sleep 5
+          done
 
       - name: Configure
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/${{ env.QT_ARCH }}"
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/${{ env.QT_ARCH }}"
 
       - name: Build
-        run: cmake --build build
+        run: |
+          cmake --build build
 
       - name: Generate application icon
-        run: python3 -c "import zlib,struct; w=h=256; rgb=(15,123,205); raw=b''.join(b'\x00'+bytes(rgb)*w for _ in range(h)); ch=lambda t,d:t+d+struct.pack('>I',zlib.crc32(t+d)&0xffffffff); sig=b'\x89PNG\r\n\x1a\n'; open('fluent-view.png','wb').write(sig+ch(b'IHDR',struct.pack('>IIBBBBB',w,h,8,2,0,0,0))+ch(b'IDAT',zlib.compress(raw))+ch(b'IEND',b''))"
+        run: |
+          python3 -c "import zlib,struct; w=h=256; rgb=(15,123,205); raw=b''.join(b'\x00'+bytes(rgb)*w for _ in range(h)); ch=lambda t,d:t+d+struct.pack('>I',zlib.crc32(t+d)&0xffffffff); sig=b'\x89PNG\r\n\x1a\n'; open('fluent-view.png','wb').write(sig+ch(b'IHDR',struct.pack('>IIBBBBB',w,h,8,2,0,0,0))+ch(b'IDAT',zlib.compress(raw))+ch(b'IEND',b''))"
 
       - name: Download linuxdeploy
         run: |
@@ -153,18 +171,11 @@ jobs:
 
       - name: Build AppImage
         run: |
-          ./linuxdeploy-x86_64.AppImage --appimage --plugin qt \
-            --executable build/bin/fluent-view \
-            --desktop-file packaging/linux/fluent-view.desktop \
-            --icon-file fluent-view.png \
-            --output appimage
+          ./linuxdeploy-x86_64.AppImage --appimage --plugin qt --executable build/bin/fluent-view --desktop-file packaging/linux/fluent-view.desktop --icon-file fluent-view.png --output appimage
 
       - name: Build .deb
         run: |
-          ./linuxdeploy-x86_64.AppImage --output deb --plugin qt \
-            --executable build/bin/fluent-view \
-            --desktop-file packaging/linux/fluent-view.desktop \
-            --icon-file fluent-view.png
+          ./linuxdeploy-x86_64.AppImage --output deb --plugin qt --executable build/bin/fluent-view --desktop-file packaging/linux/fluent-view.desktop --icon-file fluent-view.png
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -204,15 +215,18 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Qt (Linux host tools)
+      - name: Install Qt (host tools + Android target)
         run: |
           python -m pip install --upgrade pip aqtinstall
-          python -m aqt install-qt "$QT_HOST" desktop "$QT_VERSION" "$QT_HOST_ARCH" \
-            --outputdir "$QT_PREFIX" --modules $QT_MODULES --retry 5
-
-      - name: Install Qt (Android target)
-        run: python -m aqt install-qt "$QT_HOST" android "$QT_VERSION" "$QT_ARCH" \
-          --outputdir "$QT_PREFIX" --modules $QT_MODULES --retry 5
+          install_qt() {
+            for i in 1 2 3 4 5; do
+              if python -m aqt install-qt "$@"; then return 0; fi
+              echo "aqt attempt $i failed, retrying"; sleep 5
+            done
+            return 1
+          }
+          install_qt "${{ env.QT_HOST }}" desktop "${{ env.QT_VERSION }}" "${{ env.QT_HOST_ARCH }}" --outputdir "${{ env.QT_PREFIX }}" --modules ${{ env.QT_MODULES }}
+          install_qt "${{ env.QT_HOST }}" android "${{ env.QT_VERSION }}" "${{ env.QT_ARCH }}" --outputdir "${{ env.QT_PREFIX }}" --modules ${{ env.QT_MODULES }}
 
       - name: Setup Android SDK / NDK
         uses: android-actions/setup-android@v3
@@ -234,10 +248,12 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
-        run: cmake --build build
+        run: |
+          cmake --build build
 
       - name: Package APK
-        run: "${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/${{ env.QT_ARCH }}/bin/androiddeployqt" --input build/android-fluent-view-deployment-settings.json --output build/android --gradle
+        run: |
+          "${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/${{ env.QT_ARCH }}/bin/androiddeployqt" --input build/android-fluent-view-deployment-settings.json --output build/android --gradle
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -254,7 +270,7 @@ jobs:
     env:
       QT_HOST: mac
       QT_ARCH: ios
-      QT_HOST_ARCH: macos
+      QT_HOST_ARCH: clang_64
       QT_PREFIX: ${{ github.workspace }}/Qt
     steps:
       - uses: actions/checkout@v4
@@ -267,24 +283,29 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Qt (macOS host tools)
+      - name: Install Qt (macOS host tools + iOS target)
         run: |
           python -m pip install --upgrade pip aqtinstall
-          python -m aqt install-qt "$QT_HOST" desktop "$QT_VERSION" "$QT_HOST_ARCH" \
-            --outputdir "$QT_PREFIX" --modules $QT_MODULES --retry 5
-
-      - name: Install Qt (iOS target)
-        run: python -m aqt install-qt "$QT_HOST" ios "$QT_VERSION" "$QT_ARCH" \
-          --outputdir "$QT_PREFIX" --modules $QT_MODULES --retry 5
+          install_qt() {
+            for i in 1 2 3 4 5; do
+              if python -m aqt install-qt "$@"; then return 0; fi
+              echo "aqt attempt $i failed, retrying"; sleep 5
+            done
+            return 1
+          }
+          install_qt "${{ env.QT_HOST }}" desktop "${{ env.QT_VERSION }}" "${{ env.QT_HOST_ARCH }}" --outputdir "${{ env.QT_PREFIX }}" --modules ${{ env.QT_MODULES }}
+          install_qt "${{ env.QT_HOST }}" ios "${{ env.QT_VERSION }}" "${{ env.QT_ARCH }}" --outputdir "${{ env.QT_PREFIX }}" --modules ${{ env.QT_MODULES }}
 
       - name: Configure
-        run: cmake -S . -B build -G Ninja \
-          -DCMAKE_TOOLCHAIN_FILE="${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/${{ env.QT_ARCH }}/lib/cmake/Qt6/qt.toolchain.cmake" \
-          -DQT_HOST_PATH="${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/${{ env.QT_HOST_ARCH }}" \
-          -DCMAKE_BUILD_TYPE=Release
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/${{ env.QT_ARCH }}/lib/cmake/Qt6/qt.toolchain.cmake" \
+            -DQT_HOST_PATH="${{ env.QT_PREFIX }}/${{ env.QT_VERSION }}/${{ env.QT_HOST_ARCH }}" \
+            -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
-        run: cmake --build build
+        run: |
+          cmake --build build
 
       - name: Upload .app
         uses: actions/upload-artifact@v4
