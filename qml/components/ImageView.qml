@@ -88,7 +88,7 @@ Item {
             id: wheel
             onWheel: (event) => {
                 var f = Math.exp(event.angleDelta.y / 360)
-                zoomAt(f, event.x, event.y)
+                zoomAt(f, event.position.x, event.position.y)
                 event.accepted = true
             }
         }

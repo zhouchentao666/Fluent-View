@@ -6,7 +6,8 @@ Text {
     id: glyph
     property string name
     property int size: 18
-    property color color: ThemeManager.isDark() ? "#E6E6E6" : "#1F1F1F"
+    // `color` is inherited from Text; assign a theme-aware default here.
+    color: ThemeManager.isDark() ? "#E6E6E6" : "#1F1F1F"
 
     text: ({
         "back": "‹", "next": "›",
@@ -24,7 +25,6 @@ Text {
 
     font.pixelSize: size
     font.family: "Segoe UI Symbol, Segoe MDL2 Assets, Apple Symbols, sans-serif"
-    color: glyph.color
     horizontalAlignment: Text.AlignHCenter
     verticalAlignment: Text.AlignVCenter
 }

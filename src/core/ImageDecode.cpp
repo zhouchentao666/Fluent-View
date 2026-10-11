@@ -66,12 +66,8 @@ QImage decode(const QString &path,
     }
 
     // Apply rotation / flips in image space (cheap, done off GUI thread).
+    // Compose so that flips happen before rotation visually.
     if (rotation != 0 || flipH || flipV) {
-        QTransform t;
-        if (flipH) t.scale(-1, 1);
-        if (flipV) t.scale(1, -1);
-        if (rotation != 0) t.rotate(rotation);
-        // Compose so that flip happens before rotation visually.
         QTransform composed;
         if (rotation != 0) composed.rotate(rotation);
         if (flipH) composed.scale(-1, 1);

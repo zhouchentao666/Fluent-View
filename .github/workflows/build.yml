@@ -1,0 +1,305 @@
+name: Build All
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  release:
+    types: [published]
+
+# ---------------------------------------------------------------------------
+# Windows x64
+# ---------------------------------------------------------------------------
+jobs:
+  windows:
+    name: Windows x64
+    runs-on: windows-latest
+    env:
+      QT_VERSION: 6.8.0
+      QT_ARCH: win64_msvc2022_64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Set up Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v5
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: windows
+          target: desktop
+          arch: ${{ env.QT_ARCH }}
+          modules: qtimageformats qtshadertools
+          dir: ${{ github.workspace }}/Qt
+          cache: true
+
+      - name: Add Qt to PATH
+        shell: bash
+        run: echo "${{ github.workspace }}/Qt/${{ env.QT_VERSION }}/${{ env.QT_ARCH }}/bin" >> "$GITHUB_PATH"
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="${{ github.workspace }}/Qt/${{ env.QT_VERSION }}/${{ env.QT_ARCH }}"
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Deploy Qt libraries
+        shell: bash
+        run: windeployqt --qmldir qml build/bin/fluent-view.exe
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fluent-view-windows
+          path: build/bin
+
+# ---------------------------------------------------------------------------
+# macOS arm64 / x86_64 (universal)
+# ---------------------------------------------------------------------------
+  macos:
+    name: macOS universal
+    runs-on: macos-latest
+    env:
+      QT_VERSION: 6.8.0
+      QT_ARCH: macos
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v5
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: mac
+          target: desktop
+          arch: ${{ env.QT_ARCH }}
+          modules: qtimageformats qtshadertools
+          dir: ${{ github.workspace }}/Qt
+          cache: true
+
+      - name: Add Qt to PATH
+        run: echo "${{ github.workspace }}/Qt/${{ env.QT_VERSION }}/${{ env.QT_ARCH }}/bin" >> "$GITHUB_PATH"
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="${{ github.workspace }}/Qt/${{ env.QT_VERSION }}/${{ env.QT_ARCH }}"
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Deploy and package (.dmg)
+        run: macdeployqt build/bin/fluent-view.app -dmg
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fluent-view-macos
+          path: build/bin/fluent-view.dmg
+
+# ---------------------------------------------------------------------------
+# Linux x64 (AppImage + deb)
+# ---------------------------------------------------------------------------
+  linux:
+    name: Linux x64
+    runs-on: ubuntu-latest
+    env:
+      QT_VERSION: 6.8.0
+      QT_ARCH: gcc_64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libgl1-mesa-dev libglu1-mesa-dev \
+            libxkbcommon-dev libglib2.0-dev pkg-config wget
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: linux
+          target: desktop
+          arch: ${{ env.QT_ARCH }}
+          modules: qtimageformats qtshadertools
+          dir: ${{ github.workspace }}/Qt
+          cache: true
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="${{ github.workspace }}/Qt/${{ env.QT_VERSION }}/${{ env.QT_ARCH }}"
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Generate application icon
+        run: python3 -c "import zlib,struct; w=h=256; rgb=(15,123,205); raw=b''.join(b'\x00'+bytes(rgb)*w for _ in range(h)); ch=lambda t,d:t+d+struct.pack('>I',zlib.crc32(t+d)&0xffffffff); sig=b'\x89PNG\r\n\x1a\n'; open('fluent-view.png','wb').write(sig+ch(b'IHDR',struct.pack('>IIBBBBB',w,h,8,2,0,0,0))+ch(b'IDAT',zlib.compress(raw))+ch(b'IEND',b''))"
+
+      - name: Download linuxdeploy
+        run: |
+          wget -c https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          wget -c https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-qt-x86_64.AppImage
+
+      - name: Build AppImage
+        run: |
+          ./linuxdeploy-x86_64.AppImage --appimage --plugin qt \
+            --executable build/bin/fluent-view \
+            --desktop-file packaging/linux/fluent-view.desktop \
+            --icon-file fluent-view.png \
+            --output appimage
+
+      - name: Build .deb
+        run: |
+          ./linuxdeploy-x86_64.AppImage --output deb --plugin qt \
+            --executable build/bin/fluent-view \
+            --desktop-file packaging/linux/fluent-view.desktop \
+            --icon-file fluent-view.png
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: fluent-view-linux
+          path: |
+            fluent-view*.AppImage
+            fluent-view*.deb
+
+# ---------------------------------------------------------------------------
+# Android arm64
+# ---------------------------------------------------------------------------
+  android:
+    name: Android arm64
+    runs-on: ubuntu-latest
+    env:
+      QT_VERSION: 6.8.0
+      QT_ARCH: android_arm64_v8a
+      HOST_ARCH: gcc_64
+      NDK_VERSION: 26.2.11394342
+      ANDROID_PLATFORM: android-34
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v5
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install Qt (Android target)
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: linux
+          target: android
+          arch: ${{ env.QT_ARCH }}
+          modules: qtimageformats qtshadertools
+          dir: ${{ github.workspace }}/Qt
+          cache: true
+
+      - name: Install Qt (Linux host tools)
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: linux
+          target: desktop
+          arch: ${{ env.HOST_ARCH }}
+          modules: qtimageformats qtshadertools
+          dir: ${{ github.workspace }}/Qt
+          cache: true
+
+      - name: Setup Android SDK / NDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK packages
+        run: sdkmanager "platforms;${{ env.ANDROID_PLATFORM }}" "build-tools;34.0.0" "ndk;${{ env.NDK_VERSION }}"
+
+      - name: Add Qt to PATH
+        run: echo "${{ github.workspace }}/Qt/${{ env.QT_VERSION }}/${{ env.HOST_ARCH }}/bin" >> "$GITHUB_PATH"
+
+      - name: Configure
+        run: |
+          export ANDROID_SDK_ROOT="$ANDROID_HOME"
+          export ANDROID_NDK_ROOT="$ANDROID_HOME/ndk/${{ env.NDK_VERSION }}"
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/Qt/${{ env.QT_VERSION }}/${{ env.QT_ARCH }}/lib/cmake/Qt6/qt.toolchain.cmake" \
+            -DQT_HOST_PATH="${{ github.workspace }}/Qt/${{ env.QT_VERSION }}/${{ env.HOST_ARCH }}" \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM="${{ env.ANDROID_PLATFORM }}" \
+            -DANDROID_NDK="$ANDROID_NDK_ROOT" \
+            -DANDROID_SDK_ROOT="$ANDROID_SDK_ROOT" \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Package APK
+        run: androiddeployqt --input build/android-fluent-view-deployment-settings.json --output build/android --gradle
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: fluent-view-android
+          path: build/android/build/outputs/apk/debug/*.apk
+
+# ---------------------------------------------------------------------------
+# iOS arm64
+# ---------------------------------------------------------------------------
+  ios:
+    name: iOS arm64
+    runs-on: macos-latest
+    env:
+      QT_VERSION: 6.8.0
+      QT_ARCH: ios
+      HOST_ARCH: macos
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v5
+
+      - name: Install Qt (iOS target)
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: mac
+          target: ios
+          arch: ${{ env.QT_ARCH }}
+          modules: qtimageformats qtshadertools
+          dir: ${{ github.workspace }}/Qt
+          cache: true
+
+      - name: Install Qt (macOS host tools)
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: mac
+          target: desktop
+          arch: ${{ env.HOST_ARCH }}
+          modules: qtimageformats qtshadertools
+          dir: ${{ github.workspace }}/Qt
+          cache: true
+
+      - name: Add Qt to PATH
+        run: echo "${{ github.workspace }}/Qt/${{ env.QT_VERSION }}/${{ env.HOST_ARCH }}/bin" >> "$GITHUB_PATH"
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja \
+          -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/Qt/${{ env.QT_VERSION }}/${{ env.QT_ARCH }}/lib/cmake/Qt6/qt.toolchain.cmake" \
+          -DQT_HOST_PATH="${{ github.workspace }}/Qt/${{ env.QT_VERSION }}/${{ env.HOST_ARCH }}" \
+          -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Upload .app
+        uses: actions/upload-artifact@v4
+        with:
+          name: fluent-view-ios
+          path: build/bin/fluent-view.app

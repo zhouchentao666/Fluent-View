@@ -13,9 +13,6 @@
 #ifdef Q_OS_WIN
 #  include <windows.h>
 #endif
-#ifdef Q_OS_MACOS
-#  include <QtGui/qpa/qplatformnativeinterface.h>
-#endif
 
 PlatformUtils::PlatformUtils(QObject *parent) : QObject(parent) {}
 

@@ -79,7 +79,12 @@ int main(int argc, char *argv[])
         QStringList paths;
         for (const QString &a : args)
             paths.append(QDir::toNativeSeparators(QUrl::fromUserInput(a).toLocalFile()));
-        model->setFiles(paths);
+        // A single file navigates its whole folder; several explicit files
+        // keep exactly that list.
+        if (paths.size() == 1)
+            model->openPath(paths.at(0));
+        else
+            model->setFiles(paths);
     }
 
     const QUrl url(QStringLiteral("qrc:/qml/main.qml"));

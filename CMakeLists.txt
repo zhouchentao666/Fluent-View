@@ -27,7 +27,7 @@ endif()
 # Qt
 # ---------------------------------------------------------------------------
 find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Quick QuickControls2)
-find_package(Qt6 OPTIONAL_COMPONENTS ImageFormats Shadertools Qml)
+find_package(Qt6 OPTIONAL_COMPONENTS Shadertools)
 
 qt_standard_project_setup(REQUIRES 6.8)
 
